@@ -1,0 +1,71 @@
+{% extends "layouts/main.html" %}
+{# anything that starts 't' in this code is the DWP translation tooling #}
+{# I’ve commented it out, but we’d need to do something similar. #}
+{% from "govuk/components/button/macro.njk" import govukButton %}
+
+{% block pageTitle %}
+{# t('common:loading') #}
+Loading page message: read out first by a screen reader
+{% endblock %}
+
+{% block content %}
+<div class="govuk-grid-row centered">
+    <div class="govuk-grid-column-two-thirds-from-desktop">
+        <h1 class="govuk-heading-xl">{# t('common:loading') #}Checking your details with your bank or building society</h1>
+        <div data-test="loading" class="ccms-loader govuk-!-margin-bottom-9" ></div>
+        <!-- this is the content that would show if JS was turned off -->
+        <noscript>
+            <p>The check has not yet completed.
+                {# t('common:loading-help') #}
+            </p>
+        </noscript>
+        <p class="govuk-!-display-none" id="help-text">
+            JAVASCRIPT MESSAGE Something is loading. If stuff goes wrong, do something else
+            {# t('common:loading-help-js') #}
+        </p>
+
+    <noscript>
+        {{ govukButton({
+        text: 'Check again',
+        href: "/success"
+        }) }}
+    </noscript>
+</div>
+{% endblock %}
+
+{% block bodyEnd %}
+
+<script>
+    const el = document.getElementById('help-text')
+    el.classList.remove('govuk-!-display-none');
+
+    // this code is using the EventSource API, so it's probably not right for the bank account API
+    // https://developer.mozilla.org/en-US/docs/Web/API/EventSource
+    
+    (async () => {
+        const response = await fetch('/loading', {
+            headers: {
+                'Accept': 'text/event-stream',
+            },
+        });
+
+        if (!response.ok) {
+            throw Error('Attempt to load has found an error: '+response.statusText);
+        }
+
+        for (const reader = response.body.getReader();;) {
+            const { value, done } = await reader.read();
+
+            if (done) {
+                break;
+            }
+
+            const data = new TextDecoder().decode(value);
+            if (data === 'false') {
+                window.location.reload();
+            }
+        }
+    })();
+</script>
+
+{% endblock %}
